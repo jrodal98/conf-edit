@@ -1,0 +1,53 @@
+#!/usr/bin/python3
+import os
+import sys
+import json
+
+class Config:
+    def __init__(self,editor=""):
+        self.default_editor = ""
+        self.config_path = "/home/jake/Projects/conf-edit/config"
+        self.actions = {}
+        if not os.path.isfile(self.config_path):
+            self.generate_default_config(editor)
+        self.actions = self.read_config()
+        print(self.actions)
+
+    def generate_default_config(self,editor=""):
+    # 1. get a default editor
+        if editor:
+            if not os.path.isfile(editor):
+                print(f"Could not find {editor}.  Provide a full path. (e.g. /usr/bin/nano)", file=sys.stderr)
+                sys.exit(1)     
+        else:
+            for option in (f"/usr/bin/{x}" for x in ("micro","nano","vim","vi","emacs","gedit")):
+                if os.path.isfile(option):
+                    print(f"Setting {option} as the default editor",file=sys.stderr)
+                    self.default_editor = option
+                    break
+            if not option:
+                print(f"Could not find a valid editor.  Provide a full path. (e.g. /usr/bin/nano)", file=sys.stderr)
+                sys.exit(1)
+
+        with open(self.config_path,"w") as f:
+            self.generate_entry("conf-edit",self.config_path,hook="echo 'conf-edit config edited!'")
+            data = [self.default_editor, self.actions,]
+            json.dump(data,f)
+
+    
+    def generate_entry(self,name,path,editor="",hook=""):
+        if not editor:
+            editor = self.default_editor
+        self.actions[name] = {"path":path,"editor":editor,"hook":hook}
+    
+    
+
+    def read_config(self):
+        with open("config") as f:
+            data = json.load(f)
+        assert isinstance(data[0],str)
+        self.default_editor = data[0]
+        return data[1]
+
+
+config = Config()
