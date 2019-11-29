@@ -10,6 +10,52 @@ Introducing `conf-edit`.  Alias this once to something like `alias ce='~/Project
 
 ## Usage
 
-I will update this in the morning.  I'm too tired right now :)
+Commands:
 
-If someone is actually reading this right now, that's kind of crazy.  Just wait like 24 hours or try to interpret the main method.
+- `add`: add a new entry
+- `remove`: remove an existing entry
+- `ls`: list all entries
+- `<entry name>`: edit an entry based on its name
+
+Examples:
+
+Adding: 
+```bash
+alias ce='./conf-edit'
+ce add -p ~/.config/i3/config -n i3 -s 'i3-msg restart'
+ce add -p ~/software/st/config.h -n st -e code
+ce add -p ~/.zshrc # 'source ~/.zshrc' posthook not added because child processes can't modify parent shell 
+```
+
+listing:
+
+```bash
+ce ls
+
+Name            Path
+conf-edit       /home/jake/.config/conf-edit/config
+i3              /home/jake/.config/i3/config
+st              /home/jake/software/st/config.h
+.zshrc          /home/jake/.zshrc
+```
+
+Remove:
+
+```bash
+ce remove .zshrc
+
+ce ls
+
+Name            Path
+conf-edit       /home/jake/.config/conf-edit/config
+i3              /home/jake/.config/i3/config
+st              /home/jake/software/st/config.h
+```
+
+File editing:
+
+```bash
+ce i3
+```
+
+This would open my i3 config and then run `i3-msg restart` when I'm done editing.
