@@ -1,24 +1,42 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import os
 import sys
 import json
+import subprocess
+import shlex
+import argparse
 
+def print_and_exit(msg):
+    """
+    Convenient function for printing an error message and stopping execution.
+    """
+    print(msg,file=sys.stderr)
+    sys.exit(1)
+
+"""
+Handles most of the conf-edit logic
+"""
 class Config:
     def __init__(self,editor=""):
-        self.default_editor = ""
-        self.config_path = "/home/jake/Projects/conf-edit/config"
-        self.actions = {}
+        self.default_editor = "" # default text editor specified by user 
+        home = os.path.expanduser("~")
+        self.config_path = f"{home}/.config/conf-edit/config" # conf-edit configuration path
+        self.actions = {} # stores the name of the files and info related to them (path, editor, hook)
         if not os.path.isfile(self.config_path):
-            self.generate_default_config(editor)
+            os.makedirs(os.path.dirname(self.config_path),exist_ok=True)
+            self.generate_default_config(editor) # generate a conf-edit config if there isn't one yet
         self.actions = self.read_config()
-        print(self.actions)
 
+    def update_config(self):
+        with open(self.config_path,"w") as f:
+            data = [self.default_editor, self.actions,]
+            json.dump(data,f)
+    
     def generate_default_config(self,editor=""):
     # 1. get a default editor
         if editor:
             if not os.path.isfile(editor):
-                print(f"Could not find {editor}.  Provide a full path. (e.g. /usr/bin/nano)", file=sys.stderr)
-                sys.exit(1)     
+                print_and_exit(f"Could not find {editor}.  Provide a full path. (e.g. /usr/bin/nano)") 
         else:
             for option in (f"/usr/bin/{x}" for x in ("micro","nano","vim","vi","emacs","gedit")):
                 if os.path.isfile(option):
@@ -26,28 +44,94 @@ class Config:
                     self.default_editor = option
                     break
             if not option:
-                print(f"Could not find a valid editor.  Provide a full path. (e.g. /usr/bin/nano)", file=sys.stderr)
-                sys.exit(1)
-
-        with open(self.config_path,"w") as f:
-            self.generate_entry("conf-edit",self.config_path,hook="echo 'conf-edit config edited!'")
-            data = [self.default_editor, self.actions,]
-            json.dump(data,f)
+                print_and_exit(f"Could not find a valid editor.  Provide a full path. (e.g. /usr/bin/nano)")
+        self.generate_entry("conf-edit",self.config_path,hook="echo 'conf-edit config edited!'")
 
     
     def generate_entry(self,name,path,editor="",hook=""):
         if not editor:
             editor = self.default_editor
         self.actions[name] = {"path":path,"editor":editor,"hook":hook}
-    
-    
+        self.update_config()
 
     def read_config(self):
-        with open("config") as f:
+        with open(self.config_path) as f:
             data = json.load(f)
         assert isinstance(data[0],str)
         self.default_editor = data[0]
         return data[1]
 
+    def perform_add(self,path,name=None,editor=None,hook=None):
+        if not name:
+            name = os.path.basename(path)
+        self.generate_entry(name,path,editor,hook)
+        print(f"Entry for {name} generated!",file=sys.stderr)
+    
+    def perform_remove(self,name):
+        if name in self.actions:
+            del self.actions[name]
+            self.update_config()
+            print(f"{name} removed.",file=sys.stderr)
+        else:
+            print_and_exit(f"{name} is not a valid entry.")
 
-config = Config()
+    def perform_list(self):
+        # too ugly right now
+        # print("{:<15} {:<15} {:<15} {:<15}".format('Name','Path','Editor',"Script"))
+        # for name, v in self.actions.items():
+        #     print("{:<15} {:<15} {:<15} {:<15}".format(name,v["path"],v["editor"],v["hook"] or "None"))
+        print("{:<15} {:<50}".format('Name','Path'))
+        for name, v in self.actions.items():
+            print("{:<15} {:<50}".format(name,v["path"]))
+
+
+    def perform_edit(self,name):
+        action_data = self.actions.get(name,None)
+        if None:
+            print_and_exit(f"{name} not found - did you add it to the conf-edit config?  If not, run conf-edit add {name}")
+        try:
+            subprocess.run([action_data["editor"],action_data["path"]])
+        except Exception:
+            print_and_exit(f"Error attempting to edit {name}.  Check your conf-edit configuration.")
+        hook = action_data["hook"]
+        if action_data["path"] == self.config_path:
+            self.actions = self.read_config()
+            new_data = self.actions.get(name,None)
+            if new_data["path"] == action_data["path"]:
+                hook = new_data["hook"]
+        if hook:
+            try:
+                subprocess.run(shlex.split(hook))
+            except Exception as e:
+                print(str(e))
+                print_and_exit(f"Error attempting to run hook for {name}.  Check your conf-edit configuration to verify that hook is valid.")
+                
+
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('action',
+                     help='Thing todo.  Options: add, remove, ls, or name of file')
+    parser.add_argument("-p","--path", help="Path to the file.")
+    parser.add_argument("-n","--name", help="Name of the command you want to associate the file with.")
+    parser.add_argument("-e","--editor", help="Editor associated with the file.")
+    parser.add_argument("-s","--script", help="Command ran after file is edited (post edit hook).")
+    args = parser.parse_args()
+    action = args.action
+    config = Config()
+
+    if action == "add":
+        if not args.path:
+            print_and_exit("You must provide the path to the file you want to create an entry for.")
+        path = os.path.abspath(args.path)
+        config.perform_add(path,args.name, args.editor, args.script)
+    elif action == "remove":
+        if not args.name:
+            print_and_exit("You must provide the name of the entry to remove.")
+        config.perform_remove(args.name)
+    elif action == "ls":
+        config.perform_list()
+    else:
+        config.perform_edit(action)
