@@ -38,7 +38,7 @@ class Config:
             if not os.path.isfile(editor):
                 print_and_exit(f"Could not find {editor}.  Provide a full path. (e.g. /usr/bin/nano)") 
         else:
-            for option in (f"/usr/bin/{x}" for x in ("micro","nano","vim","vi","emacs","gedit")):
+            for option in (f"/usr/bin/{x}" for x in ("vim","vi","emacs","nano","gedit","micro")):
                 if os.path.isfile(option):
                     print(f"Setting {option} as the default editor",file=sys.stderr)
                     self.default_editor = option
@@ -61,9 +61,7 @@ class Config:
         self.default_editor = data[0]
         return data[1]
 
-    def perform_add(self,path,name=None,editor=None,hook=None):
-        if not name:
-            name = os.path.basename(path)
+    def perform_add(self,path,name,editor=None,hook=None):
         self.generate_entry(name,path,editor,hook)
         print(f"Entry for {name} generated!",file=sys.stderr)
     
@@ -84,15 +82,7 @@ class Config:
         for name, v in self.actions.items():
             print("{:<15} {:<50}".format(name,v["path"]))
 
-
-    def perform_edit(self,name):
-        action_data = self.actions.get(name,None)
-        if None:
-            print_and_exit(f"{name} not found - did you add it to the conf-edit config?  If not, run conf-edit add {name}")
-        try:
-            subprocess.run([action_data["editor"],action_data["path"]])
-        except Exception:
-            print_and_exit(f"Error attempting to edit {name}.  Check your conf-edit configuration.")
+    def run_posthook(self,name,action_data):
         hook = action_data["hook"]
         if action_data["path"] == self.config_path:
             self.actions = self.read_config()
@@ -105,6 +95,25 @@ class Config:
             except Exception as e:
                 print(str(e))
                 print_and_exit(f"Error attempting to run hook for {name}.  Check your conf-edit configuration to verify that hook is valid.")
+
+    def perform_edit(self,name, view=False):
+        action_data = self.actions.get(name,None)
+        if None:
+            print_and_exit(f"{name} not found - did you add it to the conf-edit config?  If not, run conf-edit add {name}")
+        try:
+            subprocess.run([action_data["editor"],action_data["path"]])
+        except Exception:
+            print_and_exit(f"Error attempting to edit {name}.  Check your conf-edit configuration.")
+        if not view:
+            self.run_posthook(name,action_data)
+
+    def perform_execute(self,name, view=False):
+        action_data = self.actions.get(name,None)
+        if None:
+            print_and_exit(f"{name} not found - did you add it to the conf-edit config?  If not, run conf-edit add {name}")
+        self.run_posthook(name,action_data)
+        
+        
                 
 
 
@@ -118,8 +127,9 @@ if __name__ == "__main__":
 
     action = sys.argv[1]
     parser = argparse.ArgumentParser()
+    commands = ("add","remove","ls","view", "execute")
     parser.add_argument('action',
-                     help='Thing todo.  Options: add, remove, ls, or name of file')
+                     help='Thing todo.  Options: {}, or name of file'.format(", ".join(commands)))
     if action == "add":
         parser.add_argument("path", help="Path to the file.")
         parser.add_argument("-n","--name", help="Name of the command you want to associate the file with.")
@@ -128,8 +138,13 @@ if __name__ == "__main__":
         args = parser.parse_args()
         if not args.path:
             print_and_exit("You must provide the path to the file you want to create an entry for.")
+
         path = os.path.abspath(args.path)
-        config.perform_add(path,args.name, args.editor, args.script)
+        name = args.name if args.name else os.path.basename(path) 
+        if name in commands:
+            print_and_exit(f"Sorry, you can't use '{name}' as a name because it's a reserved keyword.")
+
+        config.perform_add(path,name, args.editor, args.script)
     elif action == "remove":
         parser.add_argument("name", help="Name of the command the file is associated with.")
         args = parser.parse_args()
@@ -138,5 +153,14 @@ if __name__ == "__main__":
         config.perform_remove(args.name)
     elif action == "ls":
         config.perform_list()
+    elif action == "execute":
+        parser.add_argument("name", help="Name of the command the file is associated with.")
+        args = parser.parse_args()
+        if not args.name:
+            print_and_exit("You must provide the name of the entry whose posthook you wish to execute.")
+        config.perform_execute(args.name)
+
     else:
-        config.perform_edit(action)
+        parser.add_argument("-v","--view", action='store_true', help="Open file in view mode (don't run posthook).")
+        args = parser.parse_args()
+        config.perform_edit(action,args.view)

@@ -15,6 +15,7 @@ Commands:
 - `add`: add a new entry
 - `remove`: remove an existing entry
 - `ls`: list all entries
+- `execute`: execute the posthook script for a given entry
 - `<entry name>`: edit an entry based on its name
 
 Examples:
@@ -52,6 +53,14 @@ conf-edit       /home/jake/.config/conf-edit/config
 i3              /home/jake/.config/i3/config
 ```
 
+Executing:
+
+```bash
+ce execute i3
+```
+
+The above example runs the `i3-msg restart` command.
+
 File editing:
 
 ```bash
@@ -59,3 +68,9 @@ ce i3
 ```
 
 This would open my i3 config and then run `i3-msg restart` when I'm done editing.
+
+```bash
+ce i3 -v
+```
+
+This would open my i3 config in "view" mode, which makes it so that the posthook script doesn't run (e.g. `i3-msg restart` doesn't run).
