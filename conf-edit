@@ -30,27 +30,19 @@ class Config:
     def update_config(self):
         with open(self.config_path,"w") as f:
             data = [self.default_editor, self.actions,]
-            json.dump(data,f)
+            json.dump(data,f,indent=4)
     
     def generate_default_config(self,editor=""):
     # 1. get a default editor
-        if editor:
-            if not os.path.isfile(editor):
-                print_and_exit(f"Could not find {editor}.  Provide a full path. (e.g. /usr/bin/nano)") 
-        else:
-            for option in (f"/usr/bin/{x}" for x in ("vim","vi","emacs","nano","gedit","micro")):
-                if os.path.isfile(option):
-                    print(f"Setting {option} as the default editor",file=sys.stderr)
-                    self.default_editor = option
-                    break
-            if not option:
-                print_and_exit(f"Could not find a valid editor.  Provide a full path. (e.g. /usr/bin/nano)")
+        self.set_default_editor(editor)
         self.generate_entry("conf-edit",self.config_path,hook="echo 'conf-edit config edited!'")
 
     
-    def generate_entry(self,name,path,editor="",hook=""):
+    def generate_entry(self,name,path,editor="",hook="",replace=False):
         if not editor:
             editor = self.default_editor
+        if name in self.actions and not replace:
+            print_and_exit(f"You already have an entry named {name} - did you mean to use replace?")
         self.actions[name] = {"path":path,"editor":editor,"hook":hook}
         self.update_config()
 
@@ -64,6 +56,15 @@ class Config:
     def perform_add(self,path,name,editor=None,hook=None):
         self.generate_entry(name,path,editor,hook)
         print(f"Entry for {name} generated!",file=sys.stderr)
+
+    def perform_replace(self,current_name,path,name,editor,hook):
+        old_path = self.actions[current_name]["path"]
+        old_editor = self.actions[current_name]["editor"]
+        old_hook = self.actions[current_name]["hook"]
+        self.generate_entry(name or current_name,path or old_path,editor or old_editor, hook or old_hook,True)
+        if current_name != name:
+            self.perform_remove(current_name)
+        print(f"Entry for {name} edited!",file=sys.stderr)
     
     def perform_remove(self,name):
         if name in self.actions:
@@ -112,12 +113,24 @@ class Config:
         if None:
             print_and_exit(f"{name} not found - did you add it to the conf-edit config?  If not, run conf-edit add {name}")
         self.run_posthook(name,action_data)
-        
-        
-                
 
-
-
+    def set_default_editor(self,editor):
+        if editor:
+            if not os.path.isfile(editor):
+                if not os.path.isfile(f"/usr/bin/{editor}"):
+                    print_and_exit(f"Could not find {editor}.  Provide a full path. (e.g. /usr/bin/nano)")
+                else:
+                    editor = f"/usr/bin/{editor}"
+            print(f"Setting {editor} as the default editor",file=sys.stderr)
+            self.default_editor = editor
+        else:
+            for option in (f"/usr/bin/{x}" for x in ("vim","vi","emacs","nano","gedit","micro")):
+                if os.path.isfile(option):
+                    print(f"Setting {option} as the default editor",file=sys.stderr)
+                    self.default_editor = option
+                    break
+            if not option:
+                print_and_exit(f"Could not find a valid editor.  Provide a full path. (e.g. /usr/bin/nano)")
 
 if __name__ == "__main__":
     config = Config()
@@ -127,7 +140,7 @@ if __name__ == "__main__":
 
     action = sys.argv[1]
     parser = argparse.ArgumentParser()
-    commands = ("add","remove","ls","view", "execute")
+    commands = ("add","remove","rm","ls","view", "execute", "replace","set-editor")
     parser.add_argument('action',
                      help='Thing todo.  Options: {}, or name of file'.format(", ".join(commands)))
     if action == "add":
@@ -145,7 +158,23 @@ if __name__ == "__main__":
             print_and_exit(f"Sorry, you can't use '{name}' as a name because it's a reserved keyword.")
 
         config.perform_add(path,name, args.editor, args.script)
-    elif action == "remove":
+    elif action == "replace":
+        parser.add_argument("current_name", help="Name of the entry.")
+        parser.add_argument("-n","--name", help="New name of the command you want to associate the file with.")
+        parser.add_argument("-p","--path", help="New path to the file.")
+        parser.add_argument("-e","--editor", help="New Editor associated with the file.")
+        parser.add_argument("-s","--script", help="New Command ran after file is edited (post edit hook).")
+        args = parser.parse_args()
+        if not args.current_name:
+            print_and_exit("You must provide the name of the entry you want to replace.")
+
+        path = os.path.abspath(args.path) if args.path else None
+        name = args.name if args.name else args.current_name
+        if name in commands:
+            print_and_exit(f"Sorry, you can't use '{name}' as a name because it's a reserved keyword.")
+
+        config.perform_replace(args.current_name,path,name, args.editor, args.script)
+    elif action == "remove" or action == "rm":
         parser.add_argument("name", help="Name of the command the file is associated with.")
         args = parser.parse_args()
         if not args.name:
@@ -159,6 +188,11 @@ if __name__ == "__main__":
         if not args.name:
             print_and_exit("You must provide the name of the entry whose posthook you wish to execute.")
         config.perform_execute(args.name)
+    elif action == "set-editor":
+        parser.add_argument("editor", help="Path to the editor.")
+        args = parser.parse_args()
+        config.set_default_editor(args.editor)
+        config.update_config()
 
     else:
         parser.add_argument("-v","--view", action='store_true', help="Open file in view mode (don't run posthook).")

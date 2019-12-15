@@ -12,13 +12,22 @@ Introducing `conf-edit`.  Alias this once to something like `alias ce='~/Project
 
 Commands:
 
+- `set-editor`: set the default editor for all entries
 - `add`: add a new entry
 - `remove`: remove an existing entry
 - `ls`: list all entries
 - `execute`: execute the posthook script for a given entry
+- `replace`: modify an entry
 - `<entry name>`: edit an entry based on its name
 
 Examples:
+
+Setting editor:
+
+```
+ce set-editor vim
+ce set-editor /usr/bin/nano
+```
 
 Adding: 
 ```bash
@@ -51,6 +60,25 @@ ce ls
 Name            Path
 conf-edit       /home/jake/.config/conf-edit/config
 i3              /home/jake/.config/i3/config
+```
+
+Replace:
+
+```bash
+ce ls
+
+Name            Path
+conf-edit       /home/jake/.config/conf-edit/config
+i3              /home/jake/.config/i3/config
+
+ce replace conf-edit -n ce -s "echo 'I renamed the conf-edit entry to ce and added this hook'"
+
+ce ls
+
+Name            Path
+ce       /home/jake/.config/conf-edit/config
+i3              /home/jake/.config/i3/config
+
 ```
 
 Executing:
