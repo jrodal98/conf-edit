@@ -22,9 +22,9 @@ Examples:
 Adding: 
 ```bash
 alias ce='./conf-edit'
-ce add -p ~/.config/i3/config -n i3 -s 'i3-msg restart'
-ce add -p ~/software/st/config.h -n st -e code
-ce add -p ~/.zshrc # 'source ~/.zshrc' posthook not added because child processes can't modify parent shell 
+ce add ~/.config/i3/config -n i3 -s 'i3-msg restart'
+ce add ~/software/st/config.h -n st -e code
+ce add ~/.zshrc # 'source ~/.zshrc' posthook not added because child processes can't modify parent shell 
 ```
 
 listing:
@@ -43,13 +43,13 @@ Remove:
 
 ```bash
 ce remove .zshrc
+ce remove st
 
 ce ls
 
 Name            Path
 conf-edit       /home/jake/.config/conf-edit/config
 i3              /home/jake/.config/i3/config
-st              /home/jake/software/st/config.h
 ```
 
 File editing:

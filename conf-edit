@@ -111,23 +111,28 @@ class Config:
 
 
 if __name__ == "__main__":
+    config = Config()
+    if len(sys.argv) == 1:
+        config.perform_list()
+        sys.exit(0)
+
+    action = sys.argv[1]
     parser = argparse.ArgumentParser()
     parser.add_argument('action',
                      help='Thing todo.  Options: add, remove, ls, or name of file')
-    parser.add_argument("-p","--path", help="Path to the file.")
-    parser.add_argument("-n","--name", help="Name of the command you want to associate the file with.")
-    parser.add_argument("-e","--editor", help="Editor associated with the file.")
-    parser.add_argument("-s","--script", help="Command ran after file is edited (post edit hook).")
-    args = parser.parse_args()
-    action = args.action
-    config = Config()
-
     if action == "add":
+        parser.add_argument("path", help="Path to the file.")
+        parser.add_argument("-n","--name", help="Name of the command you want to associate the file with.")
+        parser.add_argument("-e","--editor", help="Editor associated with the file.")
+        parser.add_argument("-s","--script", help="Command ran after file is edited (post edit hook).")
+        args = parser.parse_args()
         if not args.path:
             print_and_exit("You must provide the path to the file you want to create an entry for.")
         path = os.path.abspath(args.path)
         config.perform_add(path,args.name, args.editor, args.script)
     elif action == "remove":
+        parser.add_argument("name", help="Name of the command the file is associated with.")
+        args = parser.parse_args()
         if not args.name:
             print_and_exit("You must provide the name of the entry to remove.")
         config.perform_remove(args.name)
