@@ -4,9 +4,9 @@ An easy way to quickly edit your configuration files.
 
 ## About
 
-I've gotten pretty deep into customizing my arch linux laptop.  This means having to regularly edit my i3 config, my zsh config, my polybar config, my st terminal config, and so on.  It got annoying having to type something like `nano ~/.config/i3/config` or `code ~/software/st/config.h` everytime I want to edit one of these files.  You could obviously add aliases for these, but that could get messy quickly.  Plus, you'd have to remember all of the aliases.
+`conf-edit` provides an easy, intuitive solution for quickly navigating to configuration files. It essentially stores paths to configuration files and some associated metadata, such as the editor you wish to use and any scripts that you want to execute upon closing the file. It works similarly to aliasing, but is more organized and prevents you from having to memorize different aliases for each file.
 
-Introducing `conf-edit`.  Alias this once to something like `alias ce='~/Projects/conf-edit/conf-edit'` and start ricing in style.
+Alias `conf-edit` once to something like `alias ce='~/Projects/conf-edit/conf-edit'` and start ricing in style.
 
 ## Usage
 
@@ -29,12 +29,13 @@ ce set-editor vim
 ce set-editor /usr/bin/nano
 ```
 
-Adding: 
+Adding:
+
 ```bash
 alias ce='./conf-edit'
 ce add ~/.config/i3/config -n i3 -s 'i3-msg restart'
 ce add ~/software/st/config.h -n st -e code
-ce add ~/.zshrc # 'source ~/.zshrc' posthook not added because child processes can't modify parent shell 
+ce add ~/.zshrc # 'source ~/.zshrc' posthook not added because child processes can't modify parent shell
 ```
 
 listing:
@@ -102,3 +103,7 @@ ce i3 -v
 ```
 
 This would open my i3 config in "view" mode, which makes it so that the posthook script doesn't run (e.g. `i3-msg restart` doesn't run).
+
+## Help
+
+Running `ce -h` provides a bit of help, as does `ce <action> -h` (e.g. `ce add -h`)
