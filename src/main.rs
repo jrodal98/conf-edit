@@ -92,8 +92,6 @@ impl Edit {
                 .expect("Failed when editing file");
             if !self.no_exec {
                 execute(&entry.hook);
-            } else {
-                eprintln!("ERROR: {} does not exist. Add it with 'ce add'.", self.name);
             }
         }
     }
@@ -115,7 +113,7 @@ fn execute(hook: &str) {
 
 #[derive(Debug, StructOpt)]
 pub struct ListFiles {
-    name: Option<String>,
+    // name: Option<String>,
 }
 
 impl ListFiles {
