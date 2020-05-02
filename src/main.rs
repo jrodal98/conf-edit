@@ -4,6 +4,7 @@ use std::{
     fs::{File, OpenOptions},
     io::{Seek, SeekFrom},
     path::{Path, PathBuf},
+    process::Command,
 };
 use structopt::StructOpt;
 
@@ -60,6 +61,10 @@ pub struct Remove {
 impl Remove {
     fn run(&self) {
         dbg!("remove");
+        let mut data = get_data();
+        if let Some(_) = data.remove(&self.name) {
+            write_data(data);
+        }
     }
 }
 
@@ -73,6 +78,12 @@ pub struct Execute {
 impl Execute {
     fn run(&self) {
         dbg!("execute");
+
+        if let Some(entry) = get_data().get(&self.name) {
+            execute(&entry.hook);
+        } else {
+            eprintln!("ERROR: {} does not exist. Add it with 'ce add'.", self.name);
+        }
     }
 }
 
@@ -88,6 +99,29 @@ pub struct Edit {
 impl Edit {
     fn run(&self) {
         dbg!("edit");
+
+        if let Some(entry) = get_data().get(&self.name) {
+            std::process::Command::new(&entry.editor)
+                .arg(&entry.path)
+                .status()
+                .expect("Failed when editing file");
+            if !self.no_exec {
+                execute(&entry.hook);
+            } else {
+                eprintln!("ERROR: {} does not exist. Add it with 'ce add'.", self.name);
+            }
+        }
+    }
+}
+
+fn execute(hook: &str) {
+    if let Some(cmd) = shlex::split(hook) {
+        Command::new(&cmd[0])
+            .args(&cmd[1..])
+            .status()
+            .expect("Posthook failed");
+    } else {
+        eprintln!("ERROR: posthook is not a valid shell command.")
     }
 }
 
@@ -108,7 +142,7 @@ impl ListFiles {
 ///////////////////////////////
 
 #[derive(Debug, StructOpt)]
-pub enum Command {
+pub enum OptCommand {
     #[structopt(name = "add")]
     Add(Add),
     #[structopt(name = "rm")]
@@ -121,14 +155,14 @@ pub enum Command {
     ListFiles(ListFiles),
 }
 
-impl Command {
+impl OptCommand {
     fn run(&self) {
         match self {
-            Command::Add(command) => command.run(),
-            Command::Remove(command) => command.run(),
-            Command::Execute(command) => command.run(),
-            Command::Edit(command) => command.run(),
-            Command::ListFiles(command) => command.run(),
+            OptCommand::Add(command) => command.run(),
+            OptCommand::Remove(command) => command.run(),
+            OptCommand::Execute(command) => command.run(),
+            OptCommand::Edit(command) => command.run(),
+            OptCommand::ListFiles(command) => command.run(),
         }
     }
 }
@@ -188,7 +222,7 @@ struct Entry {
 }
 
 fn run_app() -> Result<(), ()> {
-    let opt = Command::from_args();
+    let opt = OptCommand::from_args();
     opt.run();
     Ok(())
 }
