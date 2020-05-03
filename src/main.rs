@@ -118,7 +118,7 @@ pub struct ListFiles {
 
 impl ListFiles {
     fn run(&self) {
-        println!("{:?}", get_data());
+        println!("{:#?}", get_data());
     }
 }
 

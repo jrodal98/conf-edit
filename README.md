@@ -75,11 +75,28 @@ FLAGS:
 ```bash
 ce ls
 
-Name            Path
-conf-edit       /home/jake/.config/conf-edit/config
-i3              /home/jake/.config/i3/config
-st              /home/jake/software/st/config.h
-zsh             /home/jake/.zshrc
+{
+    "zsh": Entry {
+        path: "/home/jake/.zshrc",
+        editor: "nvim",
+        hook: "echo \'source ~/.zshrc :)\'",
+    },
+    "conf-edit": Entry {
+        path: "/home/jake/.config/conf-edit/config.json",
+        editor: "nvim",
+        hook: "echo \'conf-edit config edited!\'",
+    },
+    "nvim": Entry {
+        path: "/home/jake/.config/nvim/init.vim",
+        editor: "nvim",
+        hook: "",
+    },
+    "kitty": Entry {
+        path: "/home/jake/.config/kitty/kitty.conf",
+        editor: "nvim",
+        hook: "",
+    },
+}
 ```
 
 ### Remove:
