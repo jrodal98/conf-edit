@@ -66,10 +66,13 @@ pub struct Execute {
 
 impl Execute {
     fn run(&self) {
-        if let Some(entry) = get_data().get(&self.name) {
-            execute(&entry.hook);
-        } else {
-            eprintln!("ERROR: {} does not exist. Add it with 'ce add'.", self.name);
+        match get_data().get(&self.name) {
+            Some(entry) => {
+                    execute(&entry.hook);
+                }
+            None => {
+                    eprintln!("ERROR: {} does not exist. Add it with 'ce add'.", self.name);
+                }
         }
     }
 }
@@ -85,26 +88,34 @@ pub struct Edit {
 
 impl Edit {
     fn run(&self) {
-        if let Some(entry) = get_data().get(&self.name) {
-            std::process::Command::new(&entry.editor)
-                .arg(&entry.path)
-                .status()
-                .expect("Failed when editing file");
-            if !self.no_exec {
-                execute(&entry.hook);
-            }
+        match get_data().get(&self.name) {
+            Some(entry) => {
+                    std::process::Command::new(&entry.editor)
+                        .arg(&entry.path)
+                        .status()
+                        .expect("Failed when editing file");
+                    if !self.no_exec {
+                        execute(&entry.hook);
+                    }
+                }
+            None => {
+                    eprintln!("ERROR: {} is not a valid entry. Have you added it yet?", &self.name);
+                }
         }
     }
 }
 
 fn execute(hook: &str) {
     if !hook.is_empty() {
-        if let Some(cmd) = shlex::split(hook) {
-            if let Err(e) = Command::new(&cmd[0]).args(&cmd[1..]).status() {
-                eprintln!("ERROR: posthook failed: {}", e);
-            }
-        } else {
-            eprintln!("ERROR: posthook is not a valid shell command.");
+        match shlex::split(hook) {
+            Some(cmd) => {
+                    if let Err(e) = Command::new(&cmd[0]).args(&cmd[1..]).status() {
+                        eprintln!("ERROR: posthook failed: {}", e);
+                    }
+                }
+            None => {
+                    eprintln!("ERROR: posthook is not a valid shell command.");
+                }
         }
     }
 }
